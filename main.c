@@ -10,28 +10,28 @@
 #include <string.h>
 
 /* List stuff */
-typedef struct NODE {
+typedef struct MEMALLOC_NODE {
     void* data;
-    struct NODE* next;
+    struct MEMALLOC_NODE* next;
     void* (*create)(void* data);
     void (*destroy)(void* data);
-} NODE;
+} MEMALLOC_NODE;
 
 typedef struct MEMALLOC {
     unsigned long int size;
-    struct NODE* node;
+    struct MEMALLOC_NODE* node;
     void* (*add)(struct MEMALLOC*, void* data, void* (*create)(void*), void (*destroy)(void*));
 } MEMALLOC;
 
 MEMALLOC* memalloc_init(void);
-void memalloc_quit(MEMALLOC* list);
+void memalloc_quit(MEMALLOC*);
 void* memalloc_node_add(MEMALLOC* , void* data, void* (*create)(void*), void (*destroy)(void*));
 
 /* Constructors and destructors for different types */
-void* create(void* param);
-void destroy(void* param);
-void* create_testdata(void* param);
-void destroy_testdata(void* param);
+void* create(void*);
+void destroy(void*);
+void* create_testdata(void*);
+void destroy_testdata(void*);
 
 /* Data types for testing */
 typedef struct TEST_DATA {
@@ -45,57 +45,49 @@ struct test_data {
 };
 
 MEMALLOC* memalloc_init(void) {
-    MEMALLOC* list = malloc(sizeof(struct MEMALLOC));
-    if (list != NULL) {
-        memset(list, 0, sizeof(struct MEMALLOC));
-        list->node = NULL;
-        list->size = 0;
-        list->add = memalloc_node_add;
+    MEMALLOC* memalloc = malloc(sizeof(struct MEMALLOC));
+    if (memalloc != NULL) {
+        memset(memalloc, 0, sizeof(struct MEMALLOC));
+        memalloc->node = NULL;
+        memalloc->size = 0;
+        memalloc->add = memalloc_node_add;
     }
-    return list;
+    return memalloc;
 }
 
-void* memalloc_node_add(MEMALLOC* list, void* data, void* (*create)(void* params), void (*destroy)(void* params)) {
-    NODE* aux = NULL;
-    aux = malloc(sizeof(struct NODE));
+void* memalloc_node_add(MEMALLOC* memalloc, void* data, void* (*create)(void* params), void (*destroy)(void* params)) {
+    MEMALLOC_NODE* aux = NULL;
+    aux = malloc(sizeof(struct MEMALLOC_NODE));
     if (aux != NULL) {
         aux->data = create(data);
         aux->destroy = destroy;
         aux->next = NULL;
-        if (list->node == NULL) {
-            list->node = aux;
-            list->size++;
+        if (memalloc->node == NULL) {
+            memalloc->node = aux;
+            memalloc->size++;
         } else {
-            NODE* last = list->node;
-            list->node = aux;
+            MEMALLOC_NODE* last = memalloc->node;
+            memalloc->node = aux;
             aux->next = last;
-            list->size++;
+            memalloc->size++;
         }
         return aux->data;
     }
     return NULL;
 }
 
-void memalloc_quit(MEMALLOC* list) {
-    NODE* node = NULL;
-    if (list != NULL) {
-        node = list->node;
+void memalloc_quit(MEMALLOC* memalloc) {
+    MEMALLOC_NODE* node = NULL;
+    if (memalloc != NULL) {
+        node = memalloc->node;
         while(node != NULL) {
             node->destroy(node->data);
-            NODE* aux = node->next;
+            MEMALLOC_NODE* aux = node->next;
             free(node);
             node = aux;
         }
-        free(list);
-        list = NULL;
-    }
-}
-
-void list_view(MEMALLOC* list) {
-    NODE* node = list->node;
-    while(node != NULL) {
-        fprintf(stdout, "\nSalida: %s", (char*)node->data);
-        node = node->next;
+        free(memalloc);
+        memalloc = NULL;
     }
 }
 
@@ -150,7 +142,7 @@ int main(int argc, char **argv) {
     MEMALLOC* memalloc = memalloc_init();
     memalloc->add(memalloc, "Testing string", &create, &destroy);
     memalloc->add(memalloc, &t, &create_testdata, &destroy_testdata);
-    fprintf(stdout, "List size: %ld\n", memalloc->size);
+    fprintf(stdout, "Memory Allocations: %ld\n", memalloc->size);
     memalloc_quit(memalloc);
     return 0;
 }
